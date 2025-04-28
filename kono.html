@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Five-Field Kono (오밭고누)</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      min-height: 100vh;
+      padding-top: 40px;
+      padding-bottom: 60px;
+      background: #f0f0f0;
+      margin: 0;
+      font-family: 'Calibri', sans-serif;
+    }
+
+    .game-title {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+.game-buttons {
+  margin-bottom: 20px;
+  opacity: 0; /* Start invisible */
+  animation: fadeIn 1s ease forwards; /* Animate in */
+  animation-delay: 0.3s; /* Start after slight pause */
+}
+
+
+.game-buttons button {
+  font-family: 'Calibri', sans-serif;
+  font-size: 16px;
+  padding: 10px 20px;
+  margin: 5px;
+  border: none;
+  border-radius: 10px;
+  background-color: #e0e0e0;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.game-buttons button:hover {
+  background-color: #d0d0d0;
+  transform: scale(1.02);
+}
+
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-template-rows: repeat(5, 60px);
+      gap: 5px;
+      background-color: #333;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 5px;
+      position: relative;
+    }
+
+    .piece {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: gray;
+      cursor: grab;
+    }
+
+    .ghost {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.8;
+    }
+
+    .player1 {
+      background-color: red;
+    }
+
+    .player2 {
+      background-color: blue;
+    }
+
+    .valid-move {
+      background-color: #cce5ff;
+    }
+
+    .turn-indicator {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .move-counter {
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+
+    .instructions {
+      background: #ffffff;
+      padding: 20px;
+      margin-top: 30px;
+      width: 100%;
+      max-width: 600px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      font-family: 'Calibri', sans-serif;
+      font-size: 16px;
+      color: #444;
+      line-height: 1.6;
+      text-align: left;
+      margin-bottom: 60px;
+    }
+
+    .instructions h2 {
+      font-size: 22px;
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #222;
+      font-weight: bold;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 6px;
+    }
+
+    .instructions ul {
+      padding-left: 20px;
+      margin: 0;
+    }
+
+    .instructions li {
+      margin-bottom: 8px;
+    }
+
+
+
+
+.about {
+  background: #ffffff;
+  padding: 20px;
+  margin-top: 30px;
+  width: 100%;
+  max-width: 600px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-family: 'Calibri', sans-serif;
+  font-size: 16px;
+  color: #444;
+  line-height: 1.6;
+  text-align: left;
+
+  /* Fade-in animation */
+  opacity: 0;
+  animation: fadeIn 1s ease forwards;
+  animation-delay: 0.5s; /* Slightly later than buttons */
+}
+
+.about h2 {
+  font-size: 22px;
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #222;
+  font-weight: bold;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 6px;
+}
+.about p {
+  margin: 0;
+}
+
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+  </style>
+</head>
+<body>
+
+  <h1 class="game-title">Five-Field Kono (오밭고누)</h1>
+
+  <div class="game-buttons">
+    <button id="vsComputerButton">vs Computer</button>
+    <button id="vsHumanButton">vs Human</button>
+  </div>
+
+  <div id="board" class="board"></div>
+  <div id="turnIndicator" class="turn-indicator"></div>
+  <div id="moveCounter" class="move-counter"></div>
+
+  <div id="instructions" class="instructions">
+    <h2>How to Play Five-Field Kono (오밭고누)</h2>
+    <ul>
+  <li>Move your pieces one space diagonally into empty squares.</li>
+    <li>You can move forward, backward, or sideways (diagonally).</li>
+    <li>Put all your pieces into the home squares of the opponent's pieces to win.</li>
+    <li>No capturing or jumping over other pieces.</li>
+    <li><small><em>For "vs Computer" – You are <span style="color: red;">Red</span>, the Computer is <span style="color: blue;">Blue</span>.</em></small></li>
+    <li><small><em>For "vs Human" – You control both sides and take turns manually.</em></small></li>
+  
+
+    </ul>
+  </div>
+
+
+<div id="about" class="about">
+  <h2>About Five-Field Kono (오밭고누)</h2>
+  <p>
+    Five-Field Kono is a traditional Korean abstract strategy game. 
+    It was played on a simple 5×5 board where players aimed to move their pieces into the starting positions of their opponent. 
+    The game emphasizes careful movement and positioning without any capturing or jumping. 
+    Its origins date back centuries, reflecting Korea's rich tradition of strategy games designed for thoughtful, deliberate play.
+  </p>
+</div>
+
+  <script>
+    const boardSize = 5;
+    const board = document.getElementById('board');
+    const turnIndicator = document.getElementById('turnIndicator');
+    const moveCounterDisplay = document.getElementById('moveCounter');
+    let currentPlayer;
+    let moveCounter = 0;
+    let draggedPiece = null;
+    let ghost = null;
+    let originalCell = null;
+    let validTargets = [];
+    let vsComputer = true;
+
+    const redGoalPositions = [
+      [4, 0], [4, 1], [4, 2], [4, 3], [4, 4],
+      [3, 0], [3, 4]
+    ];
+
+    const blueGoalPositions = [
+      [0, 0], [0, 1], [0, 2], [0, 3], [0, 4],
+      [1, 0], [1, 4]
+    ];
+
+    function initializeGame(mode = 'computer') {
+      board.innerHTML = '';
+      moveCounter = 0;
+      vsComputer = (mode === 'computer');
+      createGrid(boardSize, boardSize);
+      currentPlayer = Math.random() < 0.5 ? 'player1' : 'player2';
+      updateTurnIndicator();
+      updateMoveCounter();
+
+      if (vsComputer && currentPlayer === 'player2') {
+        setTimeout(computerMove, 500);
+      }
+    }
+
+    function createGrid(rows, cols) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          board.appendChild(cell);
+
+          if (r === 0) {
+            addPiece(cell, 'player1');
+          } else if (r === 1 && (c === 0 || c === 4)) {
+            addPiece(cell, 'player1');
+          } else if (r === 3 && (c === 0 || c === 4)) {
+            addPiece(cell, 'player2');
+          } else if (r === 4) {
+            addPiece(cell, 'player2');
+          }
+        }
+      }
+    }
+
+    function addPiece(cell, player) {
+      const piece = document.createElement('div');
+      piece.classList.add('piece', player);
+      piece.addEventListener('mousedown', startDrag);
+      cell.appendChild(piece);
+    }
+
+    function startDrag(e) {
+      if (vsComputer && currentPlayer !== 'player1') return;
+      const piece = e.target;
+      if (!piece.classList.contains(currentPlayer)) return;
+
+      draggedPiece = piece;
+      originalCell = piece.parentElement;
+      highlightValidMoves(originalCell);
+
+      ghost = piece.cloneNode(true);
+      ghost.classList.add('ghost');
+      document.body.appendChild(ghost);
+
+      moveGhost(e.pageX, e.pageY);
+
+      piece.style.visibility = 'hidden';
+
+      document.addEventListener('mousemove', dragMove);
+      document.addEventListener('mouseup', endDrag);
+    }
+
+    function dragMove(e) {
+      if (ghost) {
+        moveGhost(e.pageX, e.pageY);
+      }
+    }
+
+    function moveGhost(x, y) {
+      ghost.style.left = (x - 20) + 'px';
+      ghost.style.top = (y - 20) + 'px';
+    }
+
+    function endDrag(e) {
+      if (!draggedPiece || !ghost) return;
+
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      if (target && target.classList.contains('cell') && validTargets.includes(target)) {
+        target.appendChild(draggedPiece);
+        moveCounter++;
+        updateMoveCounter();
+        if (checkWin(currentPlayer)) {
+          setTimeout(() => {
+            alert((currentPlayer === 'player1' ? 'Red' : 'Blue') + ' wins!');
+            location.reload();
+          }, 100);
+        } else {
+          if (vsComputer) {
+            currentPlayer = 'player2';
+            updateTurnIndicator();
+            setTimeout(computerMove, 500);
+          } else {
+            switchPlayer();
+          }
+        }
+      } else {
+        originalCell.appendChild(draggedPiece);
+      }
+
+      draggedPiece.style.visibility = 'visible';
+      document.body.removeChild(ghost);
+      ghost = null;
+      draggedPiece = null;
+      originalCell = null;
+      clearHighlights();
+      document.removeEventListener('mousemove', dragMove);
+      document.removeEventListener('mouseup', endDrag);
+    }
+
+    function highlightValidMoves(fromCell) {
+      clearHighlights();
+      validTargets = [];
+      const fromRow = parseInt(fromCell.dataset.row);
+      const fromCol = parseInt(fromCell.dataset.col);
+
+      const deltas = [
+        [-1, -1], [-1, 1],
+        [1, -1], [1, 1]
+      ];
+
+      for (let [dr, dc] of deltas) {
+        const newRow = fromRow + dr;
+        const newCol = fromCol + dc;
+        const targetCell = document.querySelector(`.cell[data-row='${newRow}'][data-col='${newCol}']`);
+        if (targetCell && targetCell.children.length === 0) {
+          targetCell.classList.add('valid-move');
+          validTargets.push(targetCell);
+        }
+      }
+    }
+
+    function clearHighlights() {
+      const allCells = document.querySelectorAll('.cell');
+      allCells.forEach(cell => cell.classList.remove('valid-move'));
+      validTargets = [];
+    }
+
+    function updateTurnIndicator() {
+      if (currentPlayer === 'player1') {
+        turnIndicator.textContent = "Red's Turn";
+        turnIndicator.style.color = 'red';
+      } else {
+        turnIndicator.textContent = "Blue's Turn";
+        turnIndicator.style.color = 'blue';
+      }
+    }
+
+    function updateMoveCounter() {
+      moveCounterDisplay.textContent = `Move Count: ${moveCounter}`;
+    }
+
+    function switchPlayer() {
+      currentPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
+      updateTurnIndicator();
+    }
+
+    function checkWin(player) {
+      const goalPositions = player === 'player1' ? redGoalPositions : blueGoalPositions;
+      for (let [r, c] of goalPositions) {
+        const cell = document.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+        if (!cell || !cell.querySelector(`.piece.${player}`)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function computerMove() {
+      const allCells = document.querySelectorAll('.cell');
+      let bestMove = null;
+      let bestScore = -Infinity;
+
+      for (let cell of allCells) {
+        const piece = cell.querySelector('.piece.player2');
+        if (piece) {
+          const fromRow = parseInt(cell.dataset.row);
+          const fromCol = parseInt(cell.dataset.col);
+
+          const deltas = [
+            [-1, -1], [-1, 1],
+            [1, -1], [1, 1]
+          ];
+
+          for (let [dr, dc] of deltas) {
+            const newRow = fromRow + dr;
+            const newCol = fromCol + dc;
+            const targetCell = document.querySelector(`.cell[data-row='${newRow}'][data-col='${newCol}']`);
+            if (targetCell && targetCell.children.length === 0) {
+              let score = 0;
+              if (dr === -1) score += 10;
+              if (dr === 1) score -= 10;
+              if (newRow === 0) score += 5;
+              if (newCol === 0 || newCol === 4) score += 5;
+
+              if (score > bestScore) {
+                bestScore = score;
+                bestMove = { from: cell, to: targetCell };
+              }
+            }
+          }
+        }
+      }
+
+      if (bestMove) {
+        bestMove.to.appendChild(bestMove.from.querySelector('.piece'));
+        moveCounter++;
+        updateMoveCounter();
+        if (checkWin('player2')) {
+          setTimeout(() => {
+            alert('Blue wins!');
+            location.reload();
+          }, 100);
+        } else {
+          currentPlayer = 'player1';
+          updateTurnIndicator();
+        }
+      }
+    }
+
+    document.getElementById('vsComputerButton').addEventListener('click', () => {
+      initializeGame('computer');
+    });
+
+    document.getElementById('vsHumanButton').addEventListener('click', () => {
+      initializeGame('human');
+    });
+
+    initializeGame();
+  </script>
+</body>
+</html>
