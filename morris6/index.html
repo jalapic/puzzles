@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Six Men's Morris - Full Game</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #f0f0f0;
+      font-family: 'Calibri', sans-serif;
+overflow-y: scroll;
+    }
+    .page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 40px;
+    }
+    #turn-indicator {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    #piece-counters {
+      margin-bottom: 30px;
+      font-size: 18px;
+    }
+    .board-area {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+    #red-pound, #blue-pound {
+      width: 100px;
+      height: 300px;
+      border: 2px solid;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 5px;
+    }
+    #red-pound { border-color: red; background-color: #ffe5e5; }
+    #blue-pound { border-color: blue; background-color: #e5e5ff; }
+    #board-container {
+      position: relative;
+    }
+    .board {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      background-color: #ffffff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    .dot {
+      width: 24px;
+      height: 24px;
+      background-color: black;
+      border-radius: 50%;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      cursor: pointer;
+    }
+    .piece {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      cursor: pointer;
+    }
+    .player1 { background-color: red; }
+    .player2 { background-color: blue; }
+    .selected { outline: 3px solid gold; }
+    .highlight { background-color: lightgreen; box-shadow: 0 0 10px 2px green; }
+
+.line {
+  position: absolute;
+  background-color: black;
+  z-index: 1;
+}
+.horizontal { height: 4px; }
+.vertical { width: 4px; }
+
+
+.info-section {
+  margin-top: 40px; /* ← increase from 20px to push down more */
+  text-align: center;
+font-family: 'Calibri', sans-serif;
+}
+
+.toggle-button {
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  font-size: 18px;
+font-family: 'Calibri', sans-serif;
+  cursor: pointer;
+}
+
+.info-box {
+  display: none;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 12px;
+font-family: 'Calibri', sans-serif;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fafafa;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  min-height: 120px; /* NEW: sets a stable height */
+}
+
+.toggle-option {
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 10px;
+  animation: fadeIn 1s ease forwards;
+  animation-delay: 0.2s;
+}
+
+
+.game-title {
+ font-family: 'Calibri', sans-serif;
+ font-size: 32px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #333;
+}
+
+.game-buttons {
+  margin-bottom: 20px;
+  opacity: 0; /* Start invisible */
+  animation: fadeIn 1s ease forwards; /* Animate in */
+  animation-delay: 0.3s; /* Start after slight pause */
+}
+
+
+.game-buttons button {
+  font-family: 'Calibri', sans-serif;
+  font-size: 16px;
+  padding: 10px 20px;
+  margin: 5px;
+  border: none;
+  border-radius: 10px;
+  background-color: #e0e0e0;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.game-buttons button:hover {
+  background-color: #d0d0d0;
+  transform: scale(1.02);
+}
+
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+
+  </style>
+</head>
+<body>
+
+
+<div class="page">
+<h1 class="game-title">Six Men's Morris</h1>
+
+
+
+
+<div class="game-buttons">
+  <button id="vsComputerButton">vs Computer</button>
+  <button id="vsHumanButton">vs Human</button>
+</div>
+
+
+
+
+  <div id="turn-indicator" style="color: black;">Select a game mode</div>
+
+
+<div class="toggle-option">
+  <label>
+    <input type="checkbox" id="flyingToggle" />
+    Enable Flying Phase
+  </label>
+</div>
+
+
+  <div id="piece-counters">
+    Red Pieces Left: <span id="red-count">6</span> |
+    Blue Pieces Left: <span id="blue-count">6</span>
+  </div>
+
+
+
+
+  <div class="board-area">
+    <div id="red-pound"><h3 style="color:red; text-align:center; margin: 0; padding-top: 5px; width: 100%;">Red<br>Pound</h3>
+</div>
+    <div id="board-container"><div class="board" id="board"></div></div>
+    <div id="blue-pound"><h3 style="color:blue; text-align:center; margin: 0; padding-top: 5px; width: 100%;">Blue<br>Pound</h3>
+</div>
+  </div>
+
+
+</div>
+
+
+
+<script>
+const dots = [
+  { top: 0, left: 0 }, { top: 0, left: 50 }, { top: 0, left: 100 },
+  { top: 20, left: 20 }, { top: 20, left: 50 }, { top: 20, left: 80 },
+  { top: 50, left: 0 }, { top: 50, left: 20 }, { top: 50, left: 80 }, { top: 50, left: 100 },
+  { top: 80, left: 20 }, { top: 80, left: 50 }, { top: 80, left: 80 },
+  { top: 100, left: 0 }, { top: 100, left: 50 }, { top: 100, left: 100 }
+];
+
+const adjacency = {
+  0: [1, 6], 1: [0, 2, 4], 2: [1, 9],
+  3: [4, 7], 4: [1, 3, 5], 5: [4, 8],
+  6: [0, 7, 13], 7: [3, 6, 10], 8: [5, 9, 12], 9: [2, 8, 15],
+  10: [7, 11], 11: [10, 12, 14], 12: [8, 11],
+  13: [6, 14], 14: [11, 13, 15], 15: [9, 14]
+};
+
+const millLines = [
+  [0, 1, 2], [3, 4, 5], [10, 11, 12], [13, 14, 15],
+  [0, 6, 13], [2, 9, 15], [3, 7, 10], [5, 8, 12]
+];
+
+let currentPlayer = 'player1';
+let player1Pieces = 0, player2Pieces = 0, maxPieces = 6;
+let movementPhase = false, millInProgress = false;
+let selectedPiece = null, possibleMoves = [], claimedMills = [];
+let gameMode = null; // 'human' or 'computer'
+let gameStarted = false;
+
+const board = document.getElementById('board');
+
+
+let flyingEnabled = false;
+let isFlying = {
+  player1: false,
+  player2: false
+};
+
+
+function createDot(dot, index) {
+  const el = document.createElement('div');
+  el.className = 'dot';
+  el.style.top = dot.top + '%';
+  el.style.left = dot.left + '%';
+  el.dataset.index = index;
+  el.addEventListener('click', placePiece);
+  board.appendChild(el);
+}
+
+function updateTurnText(text, player) {
+  const el = document.getElementById('turn-indicator');
+  el.textContent = text;
+  el.style.color = player === 'player1' ? 'red' : 'blue';
+}
+
+
+function computerMovePiece() {
+
+if (!gameStarted || millInProgress) return;
+
+  const pieces = [...board.querySelectorAll('.piece.player2')];
+  const legalMoves = [];
+
+  for (let piece of pieces) {
+    const fromIndex = Number(piece.dataset.index);
+ const targets = isFlying.player2
+  ? dots.map((_, i) => i)  // all dots if flying
+  : adjacency[fromIndex];
+
+for (let toIndex of targets) {
+  const dot = document.querySelector(`.dot[data-index="${toIndex}"]`);
+  if (dot && !dot.classList.contains('occupied')) {
+    legalMoves.push({ piece, fromIndex, toIndex, targetDot: dot });
+  }
+}
+
+
+
+  }
+
+  if (legalMoves.length === 0) return;
+
+  // Step 1: Try to form a mill
+  for (let move of legalMoves) {
+    if (wouldFormMill('player2', move.toIndex, move.fromIndex)) {
+      return applyComputerMove(move);
+    }
+  }
+
+  // Step 2: Try to block human from forming a mill
+  for (let move of legalMoves) {
+    if (wouldFormMill('player1', move.toIndex)) {
+      return applyComputerMove(move);
+    }
+  }
+
+  // Step 3: Move toward buildable future mills
+  const buildTargets = findBuildableMillTargets('player2');
+  for (let move of legalMoves) {
+    if (buildTargets.includes(move.toIndex)) {
+      return applyComputerMove(move);
+    }
+  }
+
+  // Step 4: Prefer central/flexible positions
+  const preferred = [4, 7, 1, 3, 5, 8];
+  for (let move of legalMoves) {
+    if (preferred.includes(move.toIndex)) {
+      return applyComputerMove(move);
+    }
+  }
+
+  // Step 5: Fallback to random move
+  const move = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+  applyComputerMove(move);
+}
+
+
+
+function placePiece(e) {
+  if (!gameStarted) return;
+  if (gameMode === 'computer' && currentPlayer === 'player2') return;
+  if (millInProgress) return;
+
+  const dot = e.target;
+
+  // MOVEMENT PHASE
+  if (movementPhase) {
+    // If clicking an occupied dot (selecting a piece)
+    if (dot.classList.contains('occupied')) {
+      const piece = [...board.querySelectorAll(`.piece.${currentPlayer}`)].find(p =>
+        p.dataset.index === dot.dataset.index
+      );
+      if (!piece) return;
+
+      if (selectedPiece === piece) {
+        selectedPiece.classList.remove('selected');
+        selectedPiece = null;
+        clearHighlights();
+        return;
+      }
+
+      clearHighlights();
+      selectedPiece = piece;
+      selectedPiece.classList.add('selected');
+
+      const fromIndex = Number(dot.dataset.index);
+      const validTargets = isFlying[currentPlayer]
+        ? dots.map((_, i) => i)
+        : adjacency[fromIndex];
+
+      validTargets.forEach(index => {
+        const d = document.querySelector(`.dot[data-index="${index}"]`);
+        if (d && !d.classList.contains('occupied')) {
+          d.classList.add('highlight');
+        }
+      });
+      return;
+    }
+
+    // If clicking a valid move destination
+    if (!selectedPiece || dot.classList.contains('occupied') || !dot.classList.contains('highlight')) return;
+
+    const oldIndex = Number(selectedPiece.dataset.index);
+    const newIndex = Number(dot.dataset.index);
+    document.querySelector(`.dot[data-index="${oldIndex}"]`).classList.remove('occupied');
+
+    selectedPiece.style.top = dot.style.top;
+    selectedPiece.style.left = dot.style.left;
+    selectedPiece.dataset.index = dot.dataset.index;
+    dot.classList.add('occupied');
+    selectedPiece.classList.remove('selected');
+    selectedPiece = null;
+    clearHighlights();
+
+    if (checkForNewMill(currentPlayer)) {
+      millInProgress = true;
+      updateTurnText(`Mill for ${currentPlayer === 'player1' ? 'Red' : 'Blue'}! Remove an opponent's piece!`, currentPlayer);
+      enablePieceRemoval();
+      return;
+    }
+
+    validateClaimedMills();
+    updateFlyingStatus();
+    switchTurn();
+    maybeTriggerComputerMove();
+
+    if (gameMode === 'computer' && currentPlayer === 'player2' && movementPhase && !millInProgress) {
+      setTimeout(computerMovePiece, 600);
+    }
+    if (movementPhase) checkEndOfGame();
+    return;
+  }
+
+  // PLACEMENT PHASE
+  if (dot.classList.contains('occupied')) return;
+  if ((currentPlayer === 'player1' && player1Pieces >= maxPieces) ||
+      (currentPlayer === 'player2' && player2Pieces >= maxPieces)) return;
+
+  const piece = document.createElement('div');
+  piece.className = `piece ${currentPlayer}`;
+  piece.style.top = dot.style.top;
+  piece.style.left = dot.style.left;
+  piece.dataset.index = dot.dataset.index;
+  board.appendChild(piece);
+  dot.classList.add('occupied');
+
+  if (currentPlayer === 'player1') {
+    player1Pieces++;
+    document.getElementById('red-count').textContent = maxPieces - player1Pieces;
+  } else {
+    player2Pieces++;
+    document.getElementById('blue-count').textContent = maxPieces - player2Pieces;
+  }
+
+  if (player1Pieces === maxPieces && player2Pieces === maxPieces) movementPhase = true;
+
+  if (checkForNewMill(currentPlayer)) {
+    millInProgress = true;
+    updateTurnText(`Mill for ${currentPlayer === 'player1' ? 'Red' : 'Blue'}! Remove an opponent's piece!`, currentPlayer);
+    enablePieceRemoval();
+    return;
+  }
+
+  validateClaimedMills();
+  updateFlyingStatus();
+  switchTurn();
+  maybeTriggerComputerMove();
+
+  if (gameMode === 'computer' && currentPlayer === 'player2' && movementPhase && !millInProgress) {
+    setTimeout(computerMovePiece, 600);
+  }
+
+  if (movementPhase) checkEndOfGame();
+}
+
+
+
+
+function maybeTriggerComputerMove() {
+  if (gameMode === 'computer' && currentPlayer === 'player2' && !millInProgress && !movementPhase) {
+    setTimeout(computerPlacePiece, 600);
+  }
+}
+
+
+function clearHighlights() {
+  document.querySelectorAll('.dot.highlight').forEach(dot => dot.classList.remove('highlight'));
+  possibleMoves = [];
+}
+
+function switchTurn() {
+  currentPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
+  updateTurnText(`${currentPlayer === 'player1' ? 'Red' : 'Blue'}'s Turn`, currentPlayer);
+}
+
+function checkForNewMill(player) {
+  const pieces = [...board.querySelectorAll(`.piece.${player}`)].map(p => Number(p.dataset.index));
+
+  for (let line of millLines) {
+    const key = line.join('-');
+    if (!claimedMills.includes(key) && line.every(i => pieces.includes(i))) {
+      claimedMills.push(key);
+      return true;
+    }
+  }
+  return false;
+}
+
+
+function enablePieceRemoval() {
+  const opponent = currentPlayer === 'player1' ? 'player2' : 'player1';
+  const opponentPieces = [...board.querySelectorAll(`.piece.${opponent}`)];
+
+  // Find opponent pieces that are NOT in a mill
+  const removable = opponentPieces.filter(piece => {
+    const index = Number(piece.dataset.index);
+    return !isPartOfMill(opponent, index);
+  });
+
+  // If all pieces are in mills, allow removal of any
+  const targets = removable.length > 0 ? removable : opponentPieces;
+
+  targets.forEach(p => {
+    p.style.cursor = 'pointer';
+    p.addEventListener('click', removeOpponentPiece);
+  });
+}
+
+
+function removeOpponentPiece(e) {
+  e.stopPropagation();
+  const piece = e.target;
+  const index = piece.dataset.index;
+  const dot = document.querySelector(`.dot[data-index="${index}"]`);
+  if (dot) dot.classList.remove('occupied');
+const opponent = currentPlayer === 'player1' ? 'player2' : 'player1';
+const pound = document.getElementById(opponent === 'player1' ? 'red-pound' : 'blue-pound');
+
+  piece.style.position = 'static';
+  piece.style.transform = 'none';
+  piece.style.margin = '2px';
+  pound.appendChild(piece);
+  document.querySelectorAll('.piece').forEach(p => {
+    p.removeEventListener('click', removeOpponentPiece);
+    p.style.cursor = 'default';
+  });
+  millInProgress = false;
+  validateClaimedMills();
+  switchTurn();
+updateFlyingStatus();
+
+if (movementPhase) checkEndOfGame();
+
+if (gameMode === 'computer' && currentPlayer === 'player2' && movementPhase && !millInProgress) {
+  setTimeout(computerMovePiece, 600);
+}
+
+}
+
+board.addEventListener('click', function(e) {
+  if (!movementPhase || millInProgress) return;
+  const piece = e.target;
+  if (!piece.classList.contains('piece') || !piece.classList.contains(currentPlayer)) return;
+  if (selectedPiece === piece) {
+    selectedPiece.classList.remove('selected');
+    selectedPiece = null;
+    clearHighlights();
+    return;
+  }
+  if (selectedPiece) selectedPiece.classList.remove('selected');
+  clearHighlights();
+  selectedPiece = piece;
+  selectedPiece.classList.add('selected');
+  const currentIndex = Number(piece.dataset.index);
+ const targets = isFlying[currentPlayer]
+  ? dots.map((_, i) => i)
+  : adjacency[currentIndex];
+
+possibleMoves = targets.filter(i => {
+  const dot = document.querySelector(`.dot[data-index="${i}"]`);
+  return dot && !dot.classList.contains('occupied');
+});
+
+  possibleMoves.forEach(i => {
+    const dot = document.querySelector(`.dot[data-index="${i}"]`);
+    if (dot) dot.classList.add('highlight');
+  });
+});
+
+dots.forEach(createDot);
+
+// Draw connecting lines manually
+const lines = [
+  // Outer square
+  { type: 'h', top: 0, left: 0, width: 100 },
+  { type: 'h', top: 100, left: 0, width: 100 },
+  { type: 'v', left: 0, top: 0, height: 100 },
+  { type: 'v', left: 100, top: 0, height: 100 },
+
+  // Middle row horizontal
+  { type: 'h', top: 20, left: 20, width: 60 },
+  { type: 'h', top: 50, left: 0, width: 20 },
+  { type: 'h', top: 50, left: 80, width: 20 },
+  { type: 'h', top: 80, left: 20, width: 60 },
+
+  // Middle column vertical
+  { type: 'v', left: 20, top: 20, height: 60 },
+  { type: 'v', left: 50, top: 0, height: 20 },
+  { type: 'v', left: 50, top: 80, height: 20 },
+  { type: 'v', left: 80, top: 20, height: 60 }
+];
+
+for (let l of lines) {
+  const div = document.createElement('div');
+  div.classList.add('line');
+  if (l.type === 'h') {
+    div.classList.add('horizontal');
+    div.style.top = `${l.top}%`;
+    div.style.left = `${l.left}%`;
+    div.style.width = `${l.width}%`;
+  } else {
+    div.classList.add('vertical');
+    div.style.left = `${l.left}%`;
+    div.style.top = `${l.top}%`;
+    div.style.height = `${l.height}%`;
+  }
+  board.appendChild(div);
+}
+
+
+
+function validateClaimedMills() {
+  const player1Pieces = [...document.querySelectorAll('.piece.player1')].map(p => Number(p.dataset.index));
+  const player2Pieces = [...document.querySelectorAll('.piece.player2')].map(p => Number(p.dataset.index));
+  claimedMills = claimedMills.filter(key => {
+    const line = key.split('-').map(Number);
+    const p1 = line.every(i => player1Pieces.includes(i));
+    const p2 = line.every(i => player2Pieces.includes(i));
+    return p1 || p2;
+  });
+}
+
+function checkEndOfGame() {
+  ['player1', 'player2'].forEach(player => {
+    const pieces = [...board.querySelectorAll(`.piece.${player}`)];
+    const indexes = pieces.map(p => Number(p.dataset.index));
+
+    if (indexes.length < 3) {
+      endGame(player === 'player1' ? 'player2' : 'player1');
+      return;
+    }
+
+    const hasMove = indexes.some(fromIndex => {
+      const targets = isFlying[player]
+        ? dots.map((_, i) => i)  // flying = all possible dots
+        : adjacency[fromIndex]; // otherwise: only adjacent
+
+      return targets.some(toIndex => {
+        const dot = document.querySelector(`.dot[data-index="${toIndex}"]`);
+        return dot && !dot.classList.contains('occupied');
+      });
+    });
+
+    if (!hasMove) {
+      endGame(player === 'player1' ? 'player2' : 'player1');
+    }
+  });
+}
+
+
+function endGame(winner) {
+  updateTurnText(`${winner === 'player1' ? 'Red' : 'Blue'} wins the game!`, winner);
+  gameStarted = false;
+millInProgress = false;
+selectedPiece = null;
+clearHighlights();
+
+}
+
+function toggleBox(id) {
+  const box = document.getElementById(id);
+  box.style.display = (box.style.display === 'block') ? 'none' : 'block';
+}
+
+function isPartOfMill(player, index) {
+  const pieces = [...document.querySelectorAll(`.piece.${player}`)].map(p => Number(p.dataset.index));
+  return millLines.some(line =>
+    line.includes(index) && line.every(i => pieces.includes(i))
+  );
+}
+
+
+function startNewGame(mode) {
+  gameMode = mode;
+  gameStarted = true;
+
+flyingEnabled = document.getElementById('flyingToggle').checked;
+
+
+updateTurnText(`${currentPlayer === 'player1' ? 'Red' : 'Blue'}'s Turn`, currentPlayer);
+
+
+  // Clear board state
+  document.querySelectorAll('.piece').forEach(p => p.remove());
+  document.querySelectorAll('.dot').forEach(dot => dot.classList.remove('occupied'));
+  document.getElementById('red-pound').innerHTML = '<h3 style="color:red;text-align:center;margin:0;width:100%;">Red<br>Pound</h3>';
+  document.getElementById('blue-pound').innerHTML = '<h3 style="color:blue;text-align:center;margin:0;width:100%;">Blue<br>Pound</h3>';
+
+  player1Pieces = 0;
+  player2Pieces = 0;
+  movementPhase = false;
+  millInProgress = false;
+  selectedPiece = null;
+  claimedMills = [];
+
+  randomizeStartingPlayer();
+
+  document.getElementById('red-count').textContent = maxPieces;
+  document.getElementById('blue-count').textContent = maxPieces;
+  
+document.querySelector('.game-buttons').style.opacity = '0.3';
+
+if (gameMode === 'computer' && currentPlayer === 'player2') {
+  setTimeout(computerPlacePiece, 600);
+}
+  // Reattach click listeners in case they were removed by endGame()
+  document.querySelectorAll('.dot').forEach(dot => {
+    dot.addEventListener('click', placePiece);
+  });
+
+}
+
+function randomizeStartingPlayer() {
+  currentPlayer = Math.random() < 0.5 ? 'player1' : 'player2';
+  updateTurnText(`${currentPlayer === 'player1' ? "Red" : "Blue"}'s Turn`, currentPlayer);
+}
+
+function computerPlacePiece() {
+  const availableDots = [...document.querySelectorAll('.dot')].filter(dot => !dot.classList.contains('occupied'));
+  if (availableDots.length === 0) return;
+
+  const chosenDot = getBestPlacementDot();
+
+  const piece = document.createElement('div');
+  piece.className = 'piece player2';
+  piece.style.top = chosenDot.style.top;
+  piece.style.left = chosenDot.style.left;
+  piece.dataset.index = chosenDot.dataset.index;
+  board.appendChild(piece);
+
+  chosenDot.classList.add('occupied');
+  player2Pieces++;
+  document.getElementById('blue-count').textContent = maxPieces - player2Pieces;
+
+  if (player1Pieces === maxPieces && player2Pieces === maxPieces) {
+    movementPhase = true;
+  }
+
+  if (checkForNewMill('player2')) {
+    millInProgress = true;
+    updateTurnText("Mill for Blue! Remove a red piece!", 'player2');
+     setTimeout(computerRemovePiece, 500);
+    return;
+  }
+updateFlyingStatus();
+
+  switchTurn();
+}
+
+function computerRemovePiece() {
+  const opponent = 'player1';
+  const opponentPieces = [...board.querySelectorAll(`.piece.${opponent}`)];
+
+  const nonMill = opponentPieces.filter(piece => {
+    const index = Number(piece.dataset.index);
+    return !isPartOfMill(opponent, index);
+  });
+
+  const preferred = nonMill.filter(piece => {
+    const index = Number(piece.dataset.index);
+    return isNearMillFormation(opponent, index);
+  });
+
+  const fallback = nonMill.filter(piece => {
+    const index = Number(piece.dataset.index);
+    return !isNearMillFormation(opponent, index);
+  });
+
+  let choice = null;
+
+  if (preferred.length > 0) {
+    choice = preferred[Math.floor(Math.random() * preferred.length)];
+  } else if (fallback.length > 0) {
+    choice = fallback[Math.floor(Math.random() * fallback.length)];
+  } else {
+    // all red pieces are in mills — allowed to remove any
+    choice = opponentPieces[Math.floor(Math.random() * opponentPieces.length)];
+  }
+
+  const index = choice.dataset.index;
+  const dot = document.querySelector(`.dot[data-index="${index}"]`);
+  if (dot) dot.classList.remove('occupied');
+
+  const pound = document.getElementById(opponent === 'player1' ? 'red-pound' : 'blue-pound');
+
+  choice.style.position = 'static';
+  choice.style.transform = 'none';
+  choice.style.margin = '2px';
+  pound.appendChild(choice);
+
+  millInProgress = false;
+  validateClaimedMills();
+  switchTurn();
+updateFlyingStatus();
+
+  if (movementPhase) checkEndOfGame();
+
+  if (gameMode === 'computer' && currentPlayer === 'player2' && movementPhase && !millInProgress) {
+    setTimeout(computerMovePiece, 600);
+  }
+}
+
+function isNearMillFormation(player, index) {
+  const playerIndexes = [...board.querySelectorAll(`.piece.${player}`)].map(p => Number(p.dataset.index));
+  
+  return millLines.some(line => {
+    if (!line.includes(index)) return false;
+    const otherSpots = line.filter(i => i !== index);
+    const count = otherSpots.filter(i => playerIndexes.includes(i)).length;
+    return count === 1; // one other piece on this line = potential mill
+  });
+}
+
+
+function getBestPlacementDot() {
+  const availableDots = [...document.querySelectorAll('.dot')].filter(dot => !dot.classList.contains('occupied'));
+
+  // STEP 1: Can AI form a mill?
+  for (let dot of availableDots) {
+    const testIndex = Number(dot.dataset.index);
+    if (wouldFormMill('player2', testIndex)) return dot;
+  }
+
+  // STEP 2: Can AI block opponent's mill?
+  for (let dot of availableDots) {
+    const testIndex = Number(dot.dataset.index);
+    if (wouldFormMill('player1', testIndex)) return dot;
+  }
+
+  // STEP 3: Prefer central/flexible positions
+  const preferred = [4, 7, 1, 3, 5, 8]; // example: center and mid-edges
+  for (let i of preferred) {
+    const dot = document.querySelector(`.dot[data-index="${i}"]`);
+    if (dot && !dot.classList.contains('occupied')) return dot;
+  }
+
+  // STEP 4: Fallback — pick a random available dot
+  return availableDots[Math.floor(Math.random() * availableDots.length)];
+}
+
+function wouldFormMill(player, testIndex, excludeIndex = null) {
+  const playerIndexes = [...board.querySelectorAll(`.piece.${player}`)]
+    .map(p => Number(p.dataset.index))
+    .filter(i => i !== excludeIndex); // simulate moving a piece out
+  const hypothetical = [...playerIndexes, testIndex];
+
+  return millLines.some(line =>
+    line.includes(testIndex) && line.every(i => hypothetical.includes(i))
+  );
+}
+
+function applyComputerMove({ piece, fromIndex, toIndex, targetDot }) {
+  const fromDot = document.querySelector(`.dot[data-index="${fromIndex}"]`);
+  if (fromDot) fromDot.classList.remove('occupied');
+
+  piece.style.top = targetDot.style.top;
+  piece.style.left = targetDot.style.left;
+  piece.dataset.index = String(toIndex);
+  targetDot.classList.add('occupied');
+
+  if (checkForNewMill('player2')) {
+    millInProgress = true;
+    updateTurnText("Mill for Blue! Removing a red piece...", 'player2');
+    setTimeout(computerRemovePiece, 500);
+    return;
+  }
+updateFlyingStatus();
+
+  switchTurn();
+
+  // Trigger next computer move if it's still the computer's turn
+  if (gameMode === 'computer' && currentPlayer === 'player2') {
+    setTimeout(computerMovePiece, 600);
+  }
+}
+
+
+function findBuildableMillTargets(player) {
+  const playerIndexes = [...board.querySelectorAll(`.piece.${player}`)].map(p => Number(p.dataset.index));
+  const opponent = player === 'player1' ? 'player2' : 'player1';
+  const opponentIndexes = [...board.querySelectorAll(`.piece.${opponent}`)].map(p => Number(p.dataset.index));
+  const emptyTargets = [];
+
+  for (let line of millLines) {
+    const owned = line.filter(i => playerIndexes.includes(i));
+    const empty = line.filter(i =>
+      !playerIndexes.includes(i) &&
+      !opponentIndexes.includes(i) &&
+      !document.querySelector(`.dot[data-index="${i}"]`)?.classList.contains('occupied')
+    );
+
+    if (owned.length === 2 && empty.length === 1) {
+      emptyTargets.push(empty[0]);
+    }
+  }
+
+  return emptyTargets;
+}
+
+
+function updateFlyingStatus() {
+  const p1OnBoard = [...document.querySelectorAll('.piece.player1')].length;
+  const p2OnBoard = [...document.querySelectorAll('.piece.player2')].length;
+
+  isFlying.player1 = flyingEnabled && p1OnBoard === 3;
+  isFlying.player2 = flyingEnabled && p2OnBoard === 3;
+}
+
+
+document.getElementById('vsComputerButton').addEventListener('click', () => {
+  startNewGame('computer');
+});
+document.getElementById('vsHumanButton').addEventListener('click', () => {
+  startNewGame('human');
+});
+
+
+</script>
+
+
+<div class="info-section">
+  <button class="toggle-button" onclick="toggleBox('how-to')">How to Play</button>
+  <div class="info-box" id="how-to">
+    <p><strong>Objective:</strong> Reduce your opponent to two pieces, or block them so they cannot move.</p>
+
+    <p><strong>Game Phases:</strong></p>
+    <ul>
+      <li><strong>Placement Phase:</strong> Players take turns placing their six pieces on any vacant dot on the board.</li>
+      <li><strong>Movement Phase:</strong> Once all 12 pieces are placed, players take turns moving one of their pieces to an adjacent vacant dot.</li>
+    </ul>
+
+    <p><strong>Mills:</strong> A mill is formed when a player lines up three of their pieces on a straight horizontal or vertical line. When a mill is formed, the player may remove one of their opponent’s pieces. Pieces in a mill cannot be removed unless no other pieces are available.</p>
+
+    <p><strong>Pounding:</strong> You can break and reform a mill repeatedly, as long as a valid move is made each time. This can be used strategically to apply pressure.</p>
+
+    <p><strong>End of Game:</strong></p>
+    <ul>
+      <li>A player loses if they have fewer than three pieces remaining on the board.</li>
+      <li>A player also loses if none of their pieces can move.</li>
+    </ul>
+
+    <p><em>Tip:</em> Use mills to control space and force your opponent into traps!</p>
+  </div>
+</div>
+
+<div class="info-section">
+  <button class="toggle-button" onclick="toggleBox('about')">About</button>
+  <div class="info-box" id="about">
+    <p><strong>Six Men's Morris</strong> is a variant of the traditional Nine Men's Morris game, popular across Europe during the Middle Ages but became obsolete by 1600.
+ </p>
+  </div>
+</div>
+
+
+</body>
+</html>
