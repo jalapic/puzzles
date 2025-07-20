@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solitaire Morpion (5T)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+    canvas {
+      border: 2px solid #000;
+      box-sizing: content-box;
+    }
+    #controls {
+      margin: 10px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 20px;
+    }
+    #info {
+      margin-top: 20px;
+      max-width: 600px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      background: #f9f9f9;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Solitaire Morpion (5T)</h1>
+  <div id="controls">
+    <div>Lines placed: <span id="lineCount">0</span></div>
+    <div>Available moves: <span id="moveCount">0</span></div>
+    <button onclick="undoLastLine()">Undo</button>
+    <button onclick="newGame()">New Game</button>
+    <button onclick="toggleMoveHints()">Highlight Moves</button>
+    <label>Grid Size:
+      <select id="gridSizeSelector" onchange="changeGridSize(this.value)">
+        <option value="20">20x20</option>
+        <option value="22">22x22</option>
+        <option value="24">24x24</option>
+        <option value="26">26x26</option>
+        <option value="28">28x28</option>
+        <option value="30">30x30</option>
+        <option value="32">32x32</option>
+        <option value="34">34x34</option>
+        <option value="36">36x36</option>
+        <option value="38">38x38</option>
+        <option value="40">40x40</option>
+      </select>
+    </label>
+    <label>Line Opacity:
+      <input type="range" id="opacitySlider" min="0.1" max="1" step="0.1" value="1" />
+    </label>
+  </div>
+  <canvas id="board"></canvas>
+
+  <div id="info">
+    <strong>Solitaire Morpion (5T)</strong> is a one-player game where you extend a pattern of dots by adding lines made of five connected dots (horizontal, vertical, or diagonal). Each move must add exactly one new dot and cannot reuse any previously drawn segment of a line. The goal is to add as many lines as possible without breaking the rules. It first appeared in France in the 1970s. The world record is 178 lines.
+  </div>
+
+  <script>
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const lineCountDisplay = document.getElementById("lineCount");
+    const moveCountDisplay = document.getElementById("moveCount");
+    const opacitySlider = document.getElementById("opacitySlider");
+    const gridSizeSelector = document.getElementById("gridSizeSelector");
+
+    let gridSize = parseInt(gridSizeSelector.value);
+    const spacing = 30;
+    const offset = 30;
+    const dotRadius = 4;
+
+    const dots = new Set();
+    const lines = [];
+    const segments = new Set();
+    let selected = null;
+    let currentOpacity = 1;
+    let showHints = false;
+    let highlightedMoves = [];
+
+    opacitySlider.addEventListener("input", () => {
+      currentOpacity = parseFloat(opacitySlider.value);
+      drawGrid();
+    });
+
+    function changeGridSize(newSize) {
+      gridSize = parseInt(newSize);
+      const canvasSize = offset * 2 + spacing * (gridSize - 1);
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+      newGame();
+    }
+
+    function toggleMoveHints() {
+      showHints = !showHints;
+      highlightedMoves = showHints ? findAllValidMoves() : [];
+      drawGrid();
+    }
+
+    function initCross() {
+      const center = Math.floor(gridSize / 2);
+      const shift = -1;
+      const positions = [
+        [5,9],[5,10],[5,11],[5,12],
+        [6,9],        [6,12],
+        [7,9],        [7,12],
+        [8,6],[8,7],[8,8],[8,9],      [8,12],[8,13],[8,14],[8,15],
+        [9,6],                              [9,15],
+        [10,6],                             [10,15],
+        [11,6],[11,7],[11,8],[11,9],  [11,12],[11,13],[11,14],[11,15],
+        [12,9],        [12,12],
+        [13,9],        [13,12],
+        [14,9],[14,10],[14,11],[14,12]
+      ];
+      positions.forEach(([r, c]) => dots.add(`${c + shift + center - 10},${r + center - 10}`));
+    }
+
+    function newGame() {
+      dots.clear();
+      lines.length = 0;
+      segments.clear();
+      selected = null;
+      highlightedMoves = [];
+      const canvasSize = offset * 2 + spacing * (gridSize - 1);
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+      initCross();
+      updateLineCount();
+      drawGrid();
+    }
+
+    function updateLineCount() {
+      lineCountDisplay.textContent = lines.length;
+      highlightedMoves = findAllValidMoves();
+      moveCountDisplay.textContent = highlightedMoves.length;
+    }
+
+    function findAllValidMoves() {
+      const results = new Set();
+      const directions = [[1,0],[0,1],[1,1],[1,-1]];
+      for (let key of dots) {
+        const [x, y] = key.split(",").map(Number);
+        for (let [dx, dy] of directions) {
+          [-4, 0].forEach(offset => {
+            let lineDots = [];
+            for (let i = 0; i < 5; i++) {
+              const nx = x + dx * (i + offset);
+              const ny = y + dy * (i + offset);
+              if (nx < 0 || ny < 0 || nx >= gridSize || ny >= gridSize) {
+                lineDots = [];
+                break;
+              }
+              lineDots.push(`${nx},${ny}`);
+            }
+            if (lineDots.length === 5) {
+              const has = lineDots.map(d => dots.has(d));
+              if (has.filter(Boolean).length === 4 && has.includes(false)) {
+                let isOverlap = false;
+                for (let i = 1; i < 5; i++) {
+                  const s1 = `${lineDots[i-1]}-${lineDots[i]}`;
+                  const s2 = `${lineDots[i]}-${lineDots[i-1]}`;
+                  if (segments.has(s1) || segments.has(s2)) {
+                    isOverlap = true;
+                    break;
+                  }
+                }
+                if (!isOverlap) results.add(lineDots.join(";"));
+              }
+            }
+          });
+        }
+      }
+      return [...results].map(str => str.split(";"));
+    }
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const px = offset + x * spacing;
+          const py = offset + y * spacing;
+
+          ctx.beginPath();
+          ctx.arc(px, py, dotRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = "#ccc";
+          ctx.fill();
+
+          const key = `${x},${y}`;
+          if (dots.has(key)) {
+            ctx.beginPath();
+            ctx.arc(px, py, dotRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = "black";
+            ctx.fill();
+          }
+
+          if (selected === key) {
+            ctx.beginPath();
+            ctx.arc(px, py, dotRadius + 2, 0, 2 * Math.PI);
+            ctx.strokeStyle = "blue";
+            ctx.stroke();
+          }
+        }
+      }
+
+      if (showHints) {
+        for (const line of highlightedMoves) {
+          const [x1, y1] = line[0].split(",").map(Number);
+          const [x2, y2] = line[4].split(",").map(Number);
+          ctx.beginPath();
+          ctx.moveTo(offset + x1 * spacing, offset + y1 * spacing);
+          ctx.lineTo(offset + x2 * spacing, offset + y2 * spacing);
+          ctx.strokeStyle = "rgba(0, 0, 255, 0.3)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+
+      lines.forEach(line => {
+        const [x1, y1] = line[0].split(",").map(Number);
+        const [x2, y2] = line[4].split(",").map(Number);
+        ctx.beginPath();
+        ctx.moveTo(offset + x1 * spacing, offset + y1 * spacing);
+        ctx.lineTo(offset + x2 * spacing, offset + y2 * spacing);
+        ctx.strokeStyle = `rgba(255,0,0,${currentOpacity})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    }
+
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const gx = Math.round((x - offset) / spacing);
+      const gy = Math.round((y - offset) / spacing);
+      const key = `${gx},${gy}`;
+      if (gx < 0 || gy < 0 || gx >= gridSize || gy >= gridSize) return;
+
+      if (selected === null) {
+        selected = key;
+      } else if (selected === key) {
+        selected = null;
+      } else {
+        if (isValidLine(selected, key)) {
+          addLine(selected, key);
+        } else if (isValidLine(key, selected)) {
+          addLine(key, selected);
+        }
+        selected = null;
+      }
+      drawGrid();
+    });
+
+    function isValidLine(start, end) {
+      const [x1, y1] = start.split(",").map(Number);
+      const [x2, y2] = end.split(",").map(Number);
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const length = Math.max(Math.abs(dx), Math.abs(dy));
+      if (length !== 4 || (dx !== 0 && dy !== 0 && Math.abs(dx) !== Math.abs(dy))) return false;
+
+      const stepx = dx / 4;
+      const stepy = dy / 4;
+      const line = [];
+      for (let i = 0; i <= 4; i++) {
+        const cx = x1 + stepx * i;
+        const cy = y1 + stepy * i;
+        const k = `${cx},${cy}`;
+        line.push(k);
+      }
+
+      const has = line.map(d => dots.has(d));
+      if (has.filter(Boolean).length !== 4) return false;
+
+      for (let i = 1; i < 5; i++) {
+        const s1 = `${line[i - 1]}-${line[i]}`;
+        const s2 = `${line[i]}-${line[i - 1]}`;
+        if (segments.has(s1) || segments.has(s2)) return false;
+      }
+
+      return true;
+    }
+
+    function addLine(start, end) {
+      const [x1, y1] = start.split(",").map(Number);
+      const [x2, y2] = end.split(",").map(Number);
+      const dx = (x2 - x1) / 4;
+      const dy = (y2 - y1) / 4;
+      const line = [];
+      for (let i = 0; i <= 4; i++) {
+        const cx = x1 + dx * i;
+        const cy = y1 + dy * i;
+        const k = `${cx},${cy}`;
+        line.push(k);
+      }
+      const newDot = line.find(k => !dots.has(k));
+      if (newDot) dots.add(newDot);
+      for (let i = 1; i < 5; i++) {
+        const seg = `${line[i - 1]}-${line[i]}`;
+        segments.add(seg);
+      }
+      lines.push(line);
+      updateLineCount();
+      drawGrid();
+    }
+
+    function undoLastLine() {
+      const last = lines.pop();
+      if (!last) return;
+      for (let i = 1; i < 5; i++) {
+        const seg = `${last[i - 1]}-${last[i]}`;
+        segments.delete(seg);
+      }
+      const newDot = last.find(k => {
+        return !lines.some(l => l.includes(k));
+      });
+      if (newDot) dots.delete(newDot);
+      updateLineCount();
+      drawGrid();
+    }
+
+    newGame();
+  </script>
+</body>
+</html>
