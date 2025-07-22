@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Brandubh (Raven Black)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    h1 { margin-bottom: 10px; }
+    #button-container {
+      margin: 20px 0;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(7, 60px);
+      grid-template-rows: repeat(7, 60px);
+      gap: 1px;
+      background-color: #333;
+      margin-bottom: 20px;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #ddd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 30px;
+      user-select: none;
+      position: relative;
+    }
+    .highlight { background-color: lightblue !important; }
+    .throne { background-color: gold; }
+    .corner { background-color: lightgreen; }
+    .piece {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      cursor: grab;
+      z-index: 1;
+      position: absolute;
+    }
+    .black {
+      background-color: black;
+      color: white;
+    }
+    .white {
+      background-color: white;
+      color: black;
+      border: 2px solid black;
+    }
+    #turn { font-weight: bold; margin-bottom: 10px; }
+    #captured {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 10px;
+    }
+    .captured-box {
+      border: 1px solid #aaa;
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: #fff;
+    }
+    #description {
+      max-width: 500px;
+      font-size: 14px;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Brandubh (Raven Black)</h1>
+  <div id="button-container">
+    <button onclick="location.reload()">vs Human</button>
+    <button onclick="startVsComputer()">vs Computer</button>
+  </div>
+  <div id="turn">Turn: Attackers (Black)</div>
+  <div id="captured">
+    <div class="captured-box">Captured Black: <span id="capBlack">0</span></div>
+    <div class="captured-box">Captured White: <span id="capWhite">0</span></div>
+  </div>
+  <div id="board"></div>
+  <div id="description">
+    <p>Brandubh is a two-player strategy game from the tafl family, played on a 7×7 board.</p>
+    <ul>
+      <li>One player controls 8 attackers (black pieces), who move first.</li>
+      <li>The other controls 4 defenders and 1 king (white pieces; the king is marked with an "X").</li>
+      <li>All pieces move like a chess rook: any number of squares orthogonally, without jumping over others.</li>
+      <li>Captures occur by flanking an enemy piece between two of your own pieces (or against a corner).</li>
+      <li>The king is unarmed and cannot take part in captures.</li>
+      <li>Only the king can enter corner squares. Reaching a corner wins the game for the king.</li>
+      <li>The king is captured by surrounding him on all 4 orthogonal sides (or 3 on the board edge).</li>
+    </ul>
+  </div>
+  <script>
+    const boardEl = document.getElementById("board");
+const turnDisplay = document.getElementById("turn");
+const boardSize = 7;
+let currentTurn = "black";
+let gameOver = false;
+let capturedBlack = 0;
+let capturedWhite = 0;
+
+const initialSetup = [
+  [null, null, null, 0,    null, null, null],
+  [null, null, null, 0,    null, null, null],
+  [null, null, null, 1,    null, null, null],
+  [0,    0,    1,   'K',   1,    0,    0],
+  [null, null, null, 1,    null, null, null],
+  [null, null, null, 0,    null, null, null],
+  [null, null, null, 0,    null, null, null]
+];
+
+function getCell(row, col) {
+  return document.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
+}
+
+function isValidCell(row, col) {
+  return row >= 0 && row < boardSize && col >= 0 && col < boardSize;
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.cell').forEach(cell => cell.classList.remove('highlight'));
+}
+
+   function highlightMoves(piece) {
+  clearHighlights();
+  const cell = piece.parentElement;
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+  const isKing = piece.textContent === 'X';
+  const directions = [[1,0], [-1,0], [0,1], [0,-1]];
+
+  directions.forEach(([dr, dc]) => {
+    let r = row + dr, c = col + dc;
+    while (isValidCell(r, c)) {
+      const target = getCell(r, c);
+      const isOccupied = target.querySelector('.piece');
+      const isThrone = target.classList.contains('throne');
+      const isCorner = target.classList.contains('corner');
+
+      if (isOccupied) break;
+
+      // Only the king can land on throne or corners
+      if (!isKing && isCorner) break;
+      if (!isKing && isThrone && r === 3 && c === 3) {
+        r += dr;
+        c += dc;
+        continue;
+      }
+
+      target.classList.add("highlight");
+      r += dr;
+      c += dc;
+    }
+  });
+}
+
+function updateCapturedCount(color) {
+  if (color === 'black') document.getElementById('capBlack').textContent = ++capturedBlack;
+  else document.getElementById('capWhite').textContent = ++capturedWhite;
+}
+
+function checkCapture(row, col, player) {
+  const opponent = player === 'black' ? 'white' : 'black';
+  const mover = getCell(row, col).querySelector('.piece');
+  const isKingMover = mover && mover.textContent === 'X';
+  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+
+  dirs.forEach(([dr, dc]) => {
+    const r1 = row + dr, c1 = col + dc;
+    const r2 = row + 2*dr, c2 = col + 2*dc;
+    if (!isValidCell(r1, c1)) return;
+    const middleCell = getCell(r1, c1);
+    const middlePiece = middleCell.querySelector('.piece');
+    if (!middlePiece || !middlePiece.classList.contains(opponent)) return;
+    const isMiddleKing = middlePiece.textContent === 'X';
+    if (isMiddleKing) return;
+    if (!isValidCell(r2, c2)) return;
+    const flankCell = getCell(r2, c2);
+    const flankPiece = flankCell.querySelector('.piece');
+    const flankIsCorner = flankCell.classList.contains('corner');
+    const isFlankerKing = flankPiece && flankPiece.textContent === 'X';
+    if (!isKingMover && ((flankPiece && flankPiece.classList.contains(player) && !isFlankerKing) || flankIsCorner)) {
+   
+   setTimeout(() => {
+  middlePiece.remove();
+}, player === 'white' ? 200 : 200);
+
+      updateCapturedCount(opponent);
+    }
+  });
+}
+
+function checkWin(row, col) {
+  const cell = getCell(row, col);
+  const piece = cell.querySelector('.piece');
+  if (piece && piece.textContent === 'X') {
+    if (cell.classList.contains('corner')) {
+      turnDisplay.textContent = 'Defenders (White) win!';
+      return true;
+    }
+  }
+  let kingCell, kingRow, kingCol;
+  document.querySelectorAll('.piece').forEach(p => {
+    if (p.textContent === 'X') {
+      kingCell = p.parentElement;
+      kingRow = parseInt(kingCell.dataset.row);
+      kingCol = parseInt(kingCell.dataset.col);
+    }
+  });
+  if (!kingCell) {
+    turnDisplay.textContent = 'Attackers (Black) win!';
+    return true;
+  }
+  const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+  let surround = 0;
+  dirs.forEach(([dr, dc]) => {
+    const r = kingRow + dr, c = kingCol + dc;
+    if (isValidCell(r, c)) {
+      const neighbor = getCell(r, c).querySelector('.piece');
+      if (neighbor && neighbor.classList.contains('black')) surround++;
+    }
+  });
+  const isEdge = kingRow === 0 || kingRow === 6 || kingCol === 0 || kingCol === 6;
+  if ((isEdge && surround >= 3) || surround >= 4) {
+    turnDisplay.textContent = 'Attackers (Black) win!';
+    return true;
+  }
+  return false;
+}
+
+function createCell(row, col) {
+  const cell = document.createElement("div");
+  cell.classList.add("cell");
+  cell.dataset.row = row;
+  cell.dataset.col = col;
+  if (row === 3 && col === 3) cell.classList.add("throne");
+  if ((row === 0 || row === 6) && (col === 0 || col === 6)) cell.classList.add("corner");
+  boardEl.appendChild(cell);
+  return cell;
+}
+
+function addPiece(cell, type) {
+  const piece = document.createElement("div");
+  piece.classList.add("piece");
+  if (type === 0) piece.classList.add("black");
+  else if (type === 1) piece.classList.add("white");
+  else if (type === 'K') {
+    piece.classList.add("white");
+    piece.textContent = "X";
+  }
+  piece.draggable = true;
+  piece.dataset.id = `${type}-${Math.random()}`; // trackable ID
+  cell.appendChild(piece);
+}
+
+
+function drawBoard() {
+  for (let row = 0; row < boardSize; row++) {
+    for (let col = 0; col < boardSize; col++) {
+      const cell = createCell(row, col);
+      const piece = initialSetup[row][col];
+      if (piece !== null) addPiece(cell, piece);
+    }
+  }
+}
+
+function enableDragging() {
+  let draggedPiece = null;
+  document.addEventListener("dragstart", e => {
+    if (gameOver) return;
+    if (e.target.classList.contains("piece")) {
+      const piece = e.target;
+      const isBlack = piece.classList.contains("black");
+      const isWhite = piece.classList.contains("white");
+      if ((currentTurn === "black" && isBlack) || (currentTurn === "white" && isWhite)) {
+        draggedPiece = piece;
+        highlightMoves(piece);
+        setTimeout(() => draggedPiece.style.display = "none", 0);
+      } else {
+        e.preventDefault();
+      }
+    }
+  });
+
+  document.addEventListener("dragend", e => {
+    if (draggedPiece) draggedPiece.style.display = "flex";
+    clearHighlights();
+    draggedPiece = null;
+  });
+
+  document.querySelectorAll(".cell").forEach(cell => {
+    cell.addEventListener("dragover", e => {
+      if (cell.classList.contains("highlight")) e.preventDefault();
+    });
+
+    cell.addEventListener("drop", e => {
+      e.preventDefault();
+      if (!draggedPiece || !cell.classList.contains("highlight")) return;
+      cell.appendChild(draggedPiece);
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+      if (checkWin(row, col)) {
+        gameOver = true;
+        clearHighlights();
+        return;
+      }
+      checkCapture(row, col, currentTurn);
+      if (gameOver) return;
+      currentTurn = currentTurn === "black" ? "white" : "black";
+if (checkEndGame()) return;
+if (currentTurn === computerSide) {
+  turnDisplay.textContent = "Computer's turn...";
+  setTimeout(runVsComputer, 500);
+} else {
+  turnDisplay.textContent = `Your turn (${humanSide === 'black' ? 'Black' : 'White'})`;
+}
+
+    });
+  });
+}
+
+drawBoard();
+enableDragging();
+
+let computerSide = null;
+let humanSide = null;
+
+function startVsComputer() {
+  const sides = Math.random() < 0.5 ? ['human', 'computer'] : ['computer', 'human'];
+  humanSide = sides[0] === 'human' ? 'black' : 'white';
+  computerSide = humanSide === 'black' ? 'white' : 'black';
+  currentTurn = 'black';
+
+  turnDisplay.textContent = `You are ${humanSide === 'black' ? 'Attackers (Black)' : 'Defenders (White)'}`;
+  boardEl.innerHTML = '';
+  document.querySelector('#capBlack').textContent = '0';
+  document.querySelector('#capWhite').textContent = '0';
+  capturedBlack = 0;
+  capturedWhite = 0;
+  gameOver = false;
+
+  drawBoard();
+  enableDragging();
+
+  if (computerSide === 'black') {
+    turnDisplay.textContent = "Computer's turn...";
+    setTimeout(runVsComputer, 500);
+  }
+}
+
+function runVsComputer() {
+  if (gameOver || currentTurn !== computerSide) return;
+
+  const allMoves = [];
+  const pieces = Array.from(document.querySelectorAll(`.piece.${computerSide}`));
+
+  for (const piece of pieces) {
+    clearHighlights();
+    highlightMoves(piece);
+    const legal = Array.from(document.querySelectorAll('.highlight'));
+
+    const fromCell = piece.parentElement;
+    const fromRow = parseInt(fromCell.dataset.row);
+    const fromCol = parseInt(fromCell.dataset.col);
+
+    for (const target of legal) {
+      const toRow = parseInt(target.dataset.row);
+      const toCol = parseInt(target.dataset.col);
+
+      let score = 0;
+
+      // King escape strategy (for white king only)
+      if (computerSide === 'white' && piece.textContent === 'X') {
+        const corners = [[0, 0], [0, 6], [6, 0], [6, 6]];
+        const currDist = Math.min(...corners.map(([r, c]) => Math.abs(r - fromRow) + Math.abs(c - fromCol)));
+        const newDist = Math.min(...corners.map(([r, c]) => Math.abs(r - toRow) + Math.abs(c - toCol)));
+
+        if (newDist < currDist) score += 40;
+        else if (newDist === currDist) score += 10;
+        else score -= 10;
+      }
+
+      // Simulate move
+      const tempFrom = getCell(fromRow, fromCol);
+      const tempTo = getCell(toRow, toCol);
+      const tempPiece = piece.cloneNode(true);
+
+      const origFromHTML = tempFrom.innerHTML;
+      const origToHTML = tempTo.innerHTML;
+
+      tempFrom.innerHTML = "";
+      tempTo.appendChild(tempPiece);
+
+      const beforeCaptures = capturedBlack + capturedWhite;
+      checkCapture(toRow, toCol, computerSide);
+      const afterCaptures = capturedBlack + capturedWhite;
+
+      if (afterCaptures > beforeCaptures) score += 100;
+
+      // Favor centrality
+      const centerDist = Math.abs(3 - toRow) + Math.abs(3 - toCol);
+      score += (6 - centerDist);
+
+      // Proximity to king
+      const king = document.querySelector('.piece.white');
+      if (king && king.textContent === 'X') {
+        const kr = parseInt(king.parentElement.dataset.row);
+        const kc = parseInt(king.parentElement.dataset.col);
+        const kingDist = Math.abs(kr - toRow) + Math.abs(kc - toCol);
+        if (computerSide === 'black' && kingDist === 1) score += 30;
+        if (computerSide === 'white' && kingDist === 1) score += 20;
+      }
+
+      // 1-ply danger: would human take this square?
+      let danger = false;
+      const opponents = Array.from(document.querySelectorAll(`.piece.${humanSide}`));
+      for (const opp of opponents) {
+        clearHighlights();
+        highlightMoves(opp);
+        const responses = Array.from(document.querySelectorAll('.highlight'));
+        for (const r of responses) {
+          if (r.dataset.row == toRow && r.dataset.col == toCol) {
+            danger = true;
+          }
+        }
+      }
+      if (danger) score -= 50;
+
+      // Undo simulation
+      tempFrom.innerHTML = origFromHTML;
+      tempTo.innerHTML = origToHTML;
+
+      allMoves.push({ fromRow, fromCol, toRow, toCol, score });
+    }
+  }
+
+  clearHighlights();
+
+  if (allMoves.length === 0) return;
+
+  const bestScore = Math.max(...allMoves.map(m => m.score));
+  const bestMoves = allMoves.filter(m => m.score === bestScore);
+  const move = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+
+  setTimeout(() => {
+    const realFrom = getCell(move.fromRow, move.fromCol);
+    const realTo = getCell(move.toRow, move.toCol);
+    const piece = realFrom.querySelector('.piece');
+    if (!piece || !realTo) return;
+
+    realTo.appendChild(piece);
+
+    setTimeout(() => {
+      checkCapture(move.toRow, move.toCol, computerSide);
+      if (checkEndGame()) return;
+      currentTurn = humanSide;
+      turnDisplay.textContent = `Your turn (${humanSide === 'black' ? 'Black' : 'White'})`;
+    }, 150);
+  }, 300); // visual delay for smoother movement
+}
+
+
+function checkEndGame() {
+      // Check for king at corner
+      const corners = [getCell(0, 0), getCell(0, 6), getCell(6, 0), getCell(6, 6)];
+      for (const corner of corners) {
+        const piece = corner.querySelector('.piece');
+        if (piece && piece.textContent === 'X') {
+          turnDisplay.textContent = "Game Over: King has escaped! Defenders win.";
+          gameOver = true;
+          return true;
+        }
+      }
+
+      // Find king position
+      let kingCell = null;
+      document.querySelectorAll('.piece').forEach(p => {
+        if (p.textContent === 'X') kingCell = p.parentElement;
+      });
+      if (!kingCell) {
+        turnDisplay.textContent = "Game Over: King has been captured! Attackers win.";
+        gameOver = true;
+        return true;
+      }
+
+      const row = parseInt(kingCell.dataset.row);
+      const col = parseInt(kingCell.dataset.col);
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      let surround = 0;
+
+      dirs.forEach(([dr, dc]) => {
+        const r = row + dr;
+        const c = col + dc;
+        if (!isValidCell(r, c)) return;
+        const neighbor = getCell(r, c).querySelector('.piece');
+        if (neighbor && neighbor.classList.contains('black')) surround++;
+      });
+
+      const onEdge = row === 0 || row === 6 || col === 0 || col === 6;
+      if ((onEdge && surround >= 3) || (!onEdge && surround >= 4)) {
+        turnDisplay.textContent = "Game Over: King has been captured! Attackers win.";
+        gameOver = true;
+        return true;
+      }
+
+      return false;
+    }
+  </script>
+</body>
+</html>
